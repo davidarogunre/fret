@@ -11,8 +11,8 @@ import time
 import math
 import plotext as plt
 
-PATH = 'C:/Users/david/Desktop/Coding/fret/fret.db'
-UPATH = 'C:/Users/david/Desktop/Coding/fret/userinfo.txt'
+PATH = 'C:/Coding/fret/fret.db'
+UPATH = 'C:/Coding/fret/userinfo.txt'
 
 app = typer.Typer()
 
@@ -40,11 +40,20 @@ def display_dash(month):
     except:
         print("An error occured")
         return
-    names = [i[0] for i in data]            
+    salary = 0
+    f = open("userinfo.txt", "r")
+    salary = int(f.readlines()[1])
+    f.close()
+    
+    names = [i[0] for i in data]     
+    other_name = ["Discretionary Income"]
+    final_names = names + other_name
     values = [i[2] for i in data]
     total = sum(values)
-    percents = [(i/total)*100 for i in values]
-    plt.simple_bar(names, percents, width = 75, title = f'Budget of {month} in %')
+    percents = [round((i/salary)*100, 1) for i in values]
+    other_percent = [100-sum(percents)]
+    final_percents = percents + other_percent
+    plt.simple_bar(final_names, final_percents, width = 75, title = f'Budget of {month} in %')
     plt.show()
 
 def intro():
@@ -55,7 +64,7 @@ def intro():
         name= Prompt.ask("[bold magenta]What is your name ") 
         sprint(f"[bold green]Welcome once again {name}")
         income = Prompt.ask(f"[bold magenta]What is your income :moneybag: ?")
-        budget = Prompt.ask("[bold cyan]To begin, enter random budget category for this month in format; {name of budget} {money set aside} then use budget command to add more:")
+        budget = Prompt.ask("[bold cyan]To begin, enter random budget category for this month in format; {name of budget} {money set aside} then use budget command to add more")
         conn = sqlite3.connect("fret.db")
         new_user_db_initiate(conn, budget.split(" ")[0], datetime.now().strftime("%B"), budget.split(" ")[1], date.today().year)
         with open("userinfo.txt", "w") as f:
@@ -63,6 +72,8 @@ def intro():
             f.close()
         conn.close()
 
+def check_net_loss():
+    pass
 
 @app.command()
 def main():
