@@ -25,7 +25,6 @@ def new_user_printout():
 
 
 def iterate(percent):
-    # Let's imagine this is a web API, not a range()
     for i in range(percent):
         yield i
 
@@ -44,14 +43,23 @@ def display_dash(month):
     f = open("userinfo.txt", "r")
     salary = int(f.readlines()[1])
     f.close()
-    
-    names = [i[0] for i in data]     
-    other_name = ["Discretionary Income"]
-    final_names = names + other_name
+    other_name = []
+    other_percent = []
+    names = [f'{i[0]} (\u20a6{i[2]})' for i in data]     
     values = [i[2] for i in data]
+    percents = [round((i/salary)*100) for i in values]
+    
+    
     total = sum(values)
-    percents = [round((i/salary)*100, 1) for i in values]
-    other_percent = [100-sum(percents)]
+    if total == salary:
+        other_name = []
+        other_percent = []
+    else:
+        other_name = [f"Discretionary Income (\u20a6{salary-sum(values)})"]
+        other_percent = [100-sum(percents)]
+    
+    
+    final_names = names + other_name
     final_percents = percents + other_percent
     plt.simple_bar(final_names, final_percents, width = 75, title = f'Budget of {month} in %')
     plt.show()
@@ -72,15 +80,33 @@ def intro():
             f.close()
         conn.close()
 
-def check_net_loss():
-    pass
+def check_net_loss(new_val:int, month:str = f'{datetime.now().strftime("%B")}'):
+    data = 0
+    try: 
+        conn = sqlite3.connect("fret.db")
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM budget WHERE month='{month}' ")
+        data = cursor.fetchall()
+        conn.close()
+        f = open("userinfo.txt", "r")
+        salary = int(f.readlines()[1])
+        f.close()
+    except:
+        print("An error occured")
+        return False
+
+    if sum([i[2] for i in data]) + new_val > salary:
+        print(sum([i[2] for i in data]) + new_val)
+        return False
+    else:
+        return True
 
 @app.command()
 def main():
     intro()
 
 @app.command()
-def showb(month:str = f'{datetime.now().strftime("%B")}'):
+def showb():
     display_dash(month)
 
 @app.command()
@@ -88,12 +114,26 @@ def abudget(name:str, money:int):
     try:
         conn = sqlite3.connect("fret.db")
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO budget VALUES (?,?,?,?)",(name, datetime.now().strftime("%B"), money, date.today().year))
-        conn.commit()
+        if check_net_loss(money):
+            cursor.execute("INSERT INTO budget VALUES (?,?,?,?)",(name, datetime.now().strftime("%B"), money, date.today().year))
+            conn.commit()
+        else:
+            raise Exception("Your expenses are more than your income thereby causing net-loss, please try again or edit your other budgets")
         conn.close()
-    except sqlite3.OperationalError as e:
+    except Exception as e:
         print(e)
 
+@app.command()
+def rbudget(title:str, month: str = f'{datetime.now().strftime("%B")}'):
+    try:
+        conn = sqlite3.connect("fret.db")
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE from budget WHERE name = '{title}' AND month = '{month}'")
+        conn.commit()
+        conn.close()
+        sprint("[bold green] Budget successfully deleted :recycle:")
+    except Exception as e:
+        print(e)
 if __name__ == "__main__":
     app()
 
